@@ -1,0 +1,170 @@
+#pragma kernel GeneratePerlinNoise2D
+#pragma kernel GeneratePerlinNoise3D
+
+RWTexture2D<float4> Result2D;
+RWTexture3D<float4> Result3D;
+
+RWStructuredBuffer<float2> MinMaxBuffer;
+
+int _Scale;
+float _Disorder;
+float3 _Resolution;
+
+float3 hash3(float3 p)
+{
+    p = frac(p * float3(0.1031, 0.1030, 0.0973));
+    p += dot(p, p.zyx + 31.32);
+    return frac((p.xxy + p.yxx) * p.zyx);
+}
+
+// Quintic interpolation for smooth results
+float3 quintic(float3 t) 
+{
+    return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
+}
+
+float2 quintic(float2 t) 
+{
+    return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
+}
+
+// Improved Perlin Noise 2D with gradient vectors
+float perlinNoise2D(float2 p, float randomness)
+{
+    float2 i = floor(p);
+    float2 f = frac(p);
+    float2 u = quintic(f);
+    
+    // Get random gradients at corners with disorder
+    float2 g00 = normalize(hash3(float3(i + float2(0, 0), randomness)).xy * 2.0 - 1.0);
+    float2 g10 = normalize(hash3(float3(i + float2(1, 0), randomness)).xy * 2.0 - 1.0);
+    float2 g01 = normalize(hash3(float3(i + float2(0, 1), randomness)).xy * 2.0 - 1.0);
+    float2 g11 = normalize(hash3(float3(i + float2(1, 1), randomness)).xy * 2.0 - 1.0);
+    
+    // Distance vectors from corners
+    float2 d00 = f - float2(0, 0);
+    float2 d10 = f - float2(1, 0);
+    float2 d01 = f - float2(0, 1);
+    float2 d11 = f - float2(1, 1);
+    
+    // Dot products
+    float n00 = dot(g00, d00);
+    float n10 = dot(g10, d10);
+    float n01 = dot(g01, d01);
+    float n11 = dot(g11, d11);
+    
+    // Bilinear interpolation
+    return lerp(lerp(n00, n10, u.x), lerp(n01, n11, u.x), u.y) * 0.5 + 0.5;
+}
+
+// Improved Perlin Noise 3D with gradient vectors
+float perlinNoise3D(float3 p, float randomness)
+{
+    float3 i = floor(p);
+    float3 f = frac(p);
+    float3 u = quintic(f);
+    
+    // Get random gradients at 8 corners with disorder
+    float3 g000 = normalize(hash3(i + float3(0, 0, 0) + randomness) * 2.0 - 1.0);
+    float3 g100 = normalize(hash3(i + float3(1, 0, 0) + randomness) * 2.0 - 1.0);
+    float3 g010 = normalize(hash3(i + float3(0, 1, 0) + randomness) * 2.0 - 1.0);
+    float3 g110 = normalize(hash3(i + float3(1, 1, 0) + randomness) * 2.0 - 1.0);
+    float3 g001 = normalize(hash3(i + float3(0, 0, 1) + randomness) * 2.0 - 1.0);
+    float3 g101 = normalize(hash3(i + float3(1, 0, 1) + randomness) * 2.0 - 1.0);
+    float3 g011 = normalize(hash3(i + float3(0, 1, 1) + randomness) * 2.0 - 1.0);
+    float3 g111 = normalize(hash3(i + float3(1, 1, 1) + randomness) * 2.0 - 1.0);
+    
+    // Distance vectors from corners
+    float3 d000 = f - float3(0, 0, 0);
+    float3 d100 = f - float3(1, 0, 0);
+    float3 d010 = f - float3(0, 1, 0);
+    float3 d110 = f - float3(1, 1, 0);
+    float3 d001 = f - float3(0, 0, 1);
+    float3 d101 = f - float3(1, 0, 1);
+    float3 d011 = f - float3(0, 1, 1);
+    float3 d111 = f - float3(1, 1, 1);
+    
+    // Dot products
+    float n000 = dot(g000, d000);
+    float n100 = dot(g100, d100);
+    float n010 = dot(g010, d010);
+    float n110 = dot(g110, d110);
+    float n001 = dot(g001, d001);
+    float n101 = dot(g101, d101);
+    float n011 = dot(g011, d011);
+    float n111 = dot(g111, d111);
+    
+    // Trilinear interpolation
+    float nx00 = lerp(n000, n100, u.x);
+    float nx01 = lerp(n001, n101, u.x);
+    float nx10 = lerp(n010, n110, u.x);
+    float nx11 = lerp(n011, n111, u.x);
+    
+    float nxy0 = lerp(nx00, nx10, u.y);
+    float nxy1 = lerp(nx01, nx11, u.y);
+    
+    return lerp(nxy0, nxy1, u.z) * 0.5 + 0.5;
+}
+
+[numthreads(8,8,1)]
+void GeneratePerlinNoise2D (uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)_Resolution.x || id.y >= (uint)_Resolution.y)
+        return;
+    
+    float2 uv = float2(id.xy + 0.5) / _Resolution.xy;
+    float2 p = uv * _Scale;
+    float noise = perlinNoise2D(p, _Disorder);
+    
+    Result2D[id.xy] = float4(noise, noise, noise, 1.0);
+}
+
+[numthreads(8,8,8)]
+void GeneratePerlinNoise3D (uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)_Resolution.x || id.y >= (uint)_Resolution.y || id.z >= (uint)_Resolution.z)
+        return;
+    
+    float3 uvw = float3(id.xyz + 0.5) / _Resolution.xyz;
+    float3 p = uvw * _Scale;
+    float noise = perlinNoise3D(p, _Disorder);
+    
+    Result3D[id.xyz] = float4(noise, noise, noise, 1.0);
+}
+
+groupshared float2 localMinMax[64];
+
+[numthreads(8,8,1)]
+void FindMinMax2D(uint3 id: SV_DispatchThreadID, uint3 groupThreadID: SV_GroupThreadID, uint groupIndex : SV_GroupIndex)
+{
+    float minVal = 100000.0;
+    float maxVal = -100000.0;
+
+    if (id.x < (uint)_Resolution.x && id.y < (uint)_Resolution.y)
+    {
+        float val = Result2D[id.xy].x;
+        minVal = min(minVal, val);
+        maxVal = max(maxVal, val);
+    }
+
+    localMinMax[groupIndex] = float2(minVal, maxVal);
+    GroupMemoryBarrierWithGroupSync();
+
+    for (uint s = 32; s > 0; s >>= 1)
+    {
+        if (groupIndex < s)
+        {
+            localMinMax[groupIndex].x = min(localMinMax[groupIndex].x, localMinMax[groupIndex + s].x);
+            localMinMax[groupIndex].y = max(localMinMax[groupIndex].y, localMinMax[groupIndex + s].y);
+        }
+        GroupMemoryBarrierWithGroupSync();
+    }
+
+    if (groupIndex == 0)
+    {
+        uint originalMin;
+        InterlockedMin(asuint(MinMaxBuffer[0].x), asuint(localMinMax[0].x), originalMin);
+        uint originalMax;
+        InterlockedMax(asuint(MinMaxBuffer[0].y), asuint(localMinMax[0].y), originalMax);
+    }
+}

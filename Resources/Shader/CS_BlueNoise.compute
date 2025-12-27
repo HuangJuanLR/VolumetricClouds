@@ -1,0 +1,63 @@
+#pragma kernel GenerateBlueNoise2D
+#pragma kernel GenerateBlueNoise3D
+
+RWTexture2D<float4> Result2D;
+RWTexture3D<float4> Result3D;
+
+StructuredBuffer<float3> _SamplePoints;
+int _SampleCount;
+float3 _Resolution;
+
+float calculateClosestDistance2D(float2 pos)
+{
+    float minDist = 10000.0;
+    
+    for (int i = 0; i < _SampleCount; i++)
+    {
+        float2 sample = _SamplePoints[i].xy;
+        float dist = length(pos - sample);
+        minDist = min(minDist, dist);
+    }
+    
+    return minDist;
+}
+
+float calculateClosestDistance3D(float3 pos)
+{
+    float minDist = 10000.0;
+    
+    for (int i = 0; i < _SampleCount; i++)
+    {
+        float3 sample = _SamplePoints[i];
+        float dist = length(pos - sample);
+        minDist = min(minDist, dist);
+    }
+    
+    return minDist;
+}
+
+[numthreads(8,8,1)]
+void GenerateBlueNoise2D (uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)_Resolution.x || id.y >= (uint)_Resolution.y)
+        return;
+    
+    float2 uv = float2(id.xy + 0.5) / _Resolution.xy;
+    float dist = calculateClosestDistance2D(uv);
+    float noise = saturate(dist * 2.0);
+    
+    Result2D[id.xy] = float4(noise, noise, noise, 1.0);
+}
+
+[numthreads(8,8,8)]
+void GenerateBlueNoise3D (uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)_Resolution.x || id.y >= (uint)_Resolution.y || id.z >= (uint)_Resolution.z)
+        return;
+    
+    float3 uvw = float3(id.xyz + 0.5) / _Resolution.xyz;
+    float dist = calculateClosestDistance3D(uvw);
+    float noise = saturate(dist * 2.0);
+    
+    Result3D[id.xyz] = float4(noise, noise, noise, 1.0);
+}

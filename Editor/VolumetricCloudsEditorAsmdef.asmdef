@@ -1,0 +1,18 @@
+{
+    "name": "VolumetricCloudsEditorAsmdef",
+    "rootNamespace": "",
+    "references": [
+        "GUID:3d233b812c0fd7c4f80701832b94ca12"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
