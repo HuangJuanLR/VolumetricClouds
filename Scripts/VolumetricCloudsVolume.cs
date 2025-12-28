@@ -55,6 +55,7 @@ namespace VolumetricClouds
         [NameTag("噪波平铺")]public float detailTiling = 10.0f;
         [NameTag("噪波偏移")]public Vector3 detailOffset = Vector3.zero;
         [NameTag("噪波强度")][Range(0.0f, 1.0f)]public float detailNoiseWeight = 1.0f;
+        [NameTag("扰动强度")]public float turbulence = 50.0f;
         [NameTag("速度")][Range(0.0f, 5.0f)]public float detailWindMultiplier = 0.0f;
         
         [Header("Lighting")] 

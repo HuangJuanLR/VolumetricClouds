@@ -6,9 +6,13 @@
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
 #include "inputs.hlsl"
 
-// #if defined(ATMOSPHERIC_HEIGHT_FOG)
+#ifdef ATMOSPHERIC_HEIGHT_FOG
+#ifdef ATMOSPHERIC_HEIGHT_FOG_DEFAULTINSTAlL_KEYWORD
 #include "Assets/BOXOPHOBIC/Atmospheric Height Fog/Core/Includes/AtmosphericHeightFog.cginc"
-// #endif
+#elifdef ATMOSPHERIC_HEIGHT_FOG_CUSTOMINSTAlL_KEYWORD 
+#include "Assets/09.ThirdParty/BOXOPHOBIC/Atmospheric Height Fog/Core/Includes/AtmosphericHeightFog.cginc"
+#endif
+#endif
 
 float remap(float v, float minOld, float maxOld, float minNew, float maxNew)
 {
@@ -243,6 +247,8 @@ float SampleDensity(float3 rayPosOS, int index, bool sampleDetail, float lod, fl
         coverage = _Coverage[index];
     }
     
+    coverage = lerp(0, coverage, edgeWeight);
+    
     float localHeight = (rayPosOS.y - localMin.y) / size.y;
     float2 curveUV = float2(localHeight, (index + 0.5) / VOLUME_LIMITS);
     float curveFactor = SAMPLE_TEXTURE2D_LOD(_CoverageOverHeightCurve, sampler_LinearClamp, curveUV, 0).r;
@@ -267,7 +273,7 @@ float SampleDensity(float3 rayPosOS, int index, bool sampleDetail, float lod, fl
     float highBlend = lerp(cumulusGradient, cumulonimbusGradient, t2);
     float heightGradient = lerp(lowBlend, highBlend, step(0.5, cloudsType));
     
-    heightGradient = saturate(heightGradient * edgeWeight);
+    heightGradient = saturate(heightGradient);
     
     float shapeDensity = SampleShapeNoise(shapeUVW, coverage, heightGradient, lod);
     
@@ -276,9 +282,11 @@ float SampleDensity(float3 rayPosOS, int index, bool sampleDetail, float lod, fl
         return shapeDensity * _Density[index];
     }
     
-    float3 curlOffset = float3(curlNoise.x, 0, curlNoise.y) * 2.0 - 1.0;
+    float3 cn;
+    cn = SAMPLE_TEXTURE3D_LOD(_ShapeNoise, sampler_LinearRepeat, shapeUVW + float3(0.5,0.5,0.5), 0);
+    float3 curlOffset = float3(cn.x, cn.y, cn.z) * 2.0 - 1.0;
     
-    float3 detailSamplePos = rayPosOS + curlOffset * (1.0 - height) * _DistortStrength;
+    float3 detailSamplePos = rayPosOS + curlOffset * (1.0 - height) * _DetailTurbulence[index];
     float3 detailOffsetPos = (detailSamplePos + windOffset * _DetailWindMultiplier[index]) * 0.001;
     float3 detailUVW = detailOffsetPos * _DetailTiling[index] + _DetailOffset[index];
     
@@ -749,7 +757,10 @@ float4 CloudsRayMarching(float index, float3 rayStart, float3 rayDir, float view
                 // sunEnergy += stepOpacity * transmittance * shadowAtt * (diffuse + specular);
                 
                 // Fog
+                float4 fogParams = 0;
+                #ifdef ATMOSPHERIC_HEIGHT_FOG
                 float4 fogParams = GetAtmosphericHeightFog(rayPosWorld);
+                #endif
                 fog.rgb += stepOpacity * transmittance * fogParams.xyz;
                 fog.a += stepOpacity * transmittance * fogParams.w;
                 

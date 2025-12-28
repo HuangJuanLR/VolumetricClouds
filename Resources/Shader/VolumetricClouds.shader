@@ -547,7 +547,7 @@ Shader "Hidden/Juan/VolumetricClouds"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/Shaders/PostProcessing/Common.hlsl"
-            #include "Assets/BOXOPHOBIC/Atmospheric Height Fog/Core/Includes/AtmosphericHeightFog.cginc"
+            #include "Assets/09.ThirdParty/BOXOPHOBIC/Atmospheric Height Fog/Core/Includes/AtmosphericHeightFog.cginc"
             
             TEXTURE2D(_VolumetricCloudsTex);
             TEXTURE2D(_VolumetricCloudsDepthTex);

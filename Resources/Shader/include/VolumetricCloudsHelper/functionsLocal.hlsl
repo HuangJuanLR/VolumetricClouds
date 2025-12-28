@@ -6,7 +6,7 @@
 #include "inputsLocal.hlsl"
 
 // #if defined(ATMOSPHERIC_HEIGHT_FOG)
-#include "Assets/BOXOPHOBIC/Atmospheric Height Fog/Core/Includes/AtmosphericHeightFog.cginc"
+#include "Assets/09.ThirdParty/BOXOPHOBIC/Atmospheric Height Fog/Core/Includes/AtmosphericHeightFog.cginc"
 // #endif
 
 float remap(float v, float minOld, float maxOld, float minNew, float maxNew)

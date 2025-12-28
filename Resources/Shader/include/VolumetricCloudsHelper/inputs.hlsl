@@ -46,6 +46,7 @@ float3 _ShapeOffset[VOLUME_LIMITS];
 float _DetailTiling[VOLUME_LIMITS];
 float3 _DetailOffset[VOLUME_LIMITS];
 float _DetailNoiseWeights[VOLUME_LIMITS];
+float _DetailTurbulence[VOLUME_LIMITS];
 
 // =============================
 // Wind

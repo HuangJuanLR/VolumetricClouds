@@ -24,14 +24,14 @@ namespace VolumetricClouds
         [System.Serializable]
         public class VolumetricCloudsSetting
         {
-            public LayerMask transparentLayerMask = -1;
+            public LayerMask transparentLayerMask = 0;
             public VolumetricCloudsDownsampling downSampling = VolumetricCloudsDownsampling._4x;
             public Texture3D shapeNoise;
             public Texture3D detailNoise;
             public Texture2D blueNoise;
 
             [Header("(Obsolete, will be deleted later)God's Rays")] 
-            public bool enableLightRays = true;
+            public bool enableLightRays = false;
             [Range(0.0f, 2.0f)] public float lightIntensity = 0.5f;
             [Range(0.1f, 5.0f)] public float sunFalloff = 2.0f;
             [Range(0.1f, 5.0f)] public float sunIntensity = 1.5f;
@@ -41,15 +41,14 @@ namespace VolumetricClouds
             [Range(10f, 1000f)] public float distanceFade = 100f;
 
             [Header("Test only")] 
-            [Range(0.0f, 1.0f)] public float comparison = 0.5f;
-            [Range(0.0f, 1.0f)] public float fogPhase = 0.5f;
-            public float distortionStrength = 1.0f;
+            [Range(0.0f, 1.0f)] public float comparison = 0.0f;
+            [Range(0.0f, 1.0f)] public float fogPhase = 1.0f;
             
             [Header("Storm")]
             public bool makeAHole = false;
-            [Range(0.0f, 1.0f)] public float holeRatio = 0.1f; 
-            [Min(0.0f)]public float swirlStrength = 1.0f;
-            [Range(0.0f, 1.0f)] public float polarStrength = 1.0f;
+            [Range(0.0f, 1.0f)] public float holeRatio = 0.0f; 
+            [Min(0.0f)]public float swirlStrength = 0.0f;
+            [Range(0.0f, 1.0f)] public float polarStrength = 0.0f;
         }
 
         class VolumetricCloudsPass : ScriptableRenderPass
@@ -57,6 +56,10 @@ namespace VolumetricClouds
             private const int VOLUME_LIMITS = 8;
             private const int ADDITIONAL_LIGHTS_LIMITS = 8;
             private const int WEATHERMAP_RESOLUTION = 512;
+
+            private const string ATMOSPHERIC_HEIGHT_FOG_KEYWORD = "ATMOSPHERIC_HEIGHT_FOG";
+            private const string ATMOSPHERIC_HEIGHT_FOG_DEFAULTINSTAlL_KEYWORD = "ATMOSPHERIC_HEIGHT_FOG_DEFAULTINSTALL";
+            private const string ATMOSPHERIC_HEIGHT_FOG_CUSTOMINSTAlL_KEYWORD = "ATMOSPHERIC_HEIGHT_FOG_CUSTOMINSTALL";
 
             private ProfilingSampler m_OuterScopeSampler;
             private ProfilingSampler m_RaymarchingSampler;
@@ -81,31 +84,39 @@ namespace VolumetricClouds
             private Quaternion[] m_CachedVolumeRotations = new Quaternion[VOLUME_LIMITS];
             
             private float[] m_CachedSteps = new float[VOLUME_LIMITS];
+            
             private Vector4[] m_CachedBoundsMins = new Vector4[VOLUME_LIMITS];
             private Vector4[] m_CachedBoundsMaxes = new Vector4[VOLUME_LIMITS];
             private Vector4[] m_CachedWorldBoundsMins = new Vector4[VOLUME_LIMITS];
             private Vector4[] m_CachedWorldBoundsMaxes = new Vector4[VOLUME_LIMITS];
             private Matrix4x4[] m_CachedVolumeWorldToLocal = new Matrix4x4[VOLUME_LIMITS];
             private Matrix4x4[] m_CachedVolumeLocalToWorld = new Matrix4x4[VOLUME_LIMITS];
+            
             private float[] m_CachedDensities = new float[VOLUME_LIMITS];
             private float[] m_CachedCoverages = new float[VOLUME_LIMITS];
             private float[] m_CachedEdgeFadeDistances = new float[VOLUME_LIMITS];
             private float[] m_CachedLODNear = new float[VOLUME_LIMITS];
             private float[] m_CachedLODFar = new float[VOLUME_LIMITS];
+            
             private Vector4[] m_CachedWindDirections = new Vector4[VOLUME_LIMITS];
             private float[] m_CachedWeatherMapWindMultipliers = new float[VOLUME_LIMITS];
             private float[] m_CachedWeatherMapWrapMode = new float[VOLUME_LIMITS];
             private Vector4[] m_CachedWeatherMapTilingOffset = new Vector4[VOLUME_LIMITS];
             private float[] m_CachedUseWeatherMap = new float[VOLUME_LIMITS];
             private float[] m_CachedAnvilBiases = new float[VOLUME_LIMITS];
+            
             private float[] m_CachedHeightInfluences = new float[VOLUME_LIMITS];
+            
             private float[] m_CachedShapeTiling = new float[VOLUME_LIMITS];
             private Vector4[] m_CachedShapeOffsets = new Vector4[VOLUME_LIMITS];
             private float[] m_CachedShapeWindMultipliers = new float[VOLUME_LIMITS];
+            
             private float[] m_CachedDetailTiling = new float[VOLUME_LIMITS];
             private Vector4[] m_CachedDetailOffsets = new Vector4[VOLUME_LIMITS];
             private float[] m_CachedDetailNoiseWeights = new float[VOLUME_LIMITS];
+            private float[] m_CachedDetailTurbulence = new float[VOLUME_LIMITS];
             private float[] m_CachedDetailWindMultipliers = new float[VOLUME_LIMITS];
+            
             private float[] m_CachedLightSteps = new float[VOLUME_LIMITS];
             private float[] m_CachedLightAbsorptionThroughCloud = new float[VOLUME_LIMITS];
             private float[] m_CachedLightAbsorptionTowardsSun = new float[VOLUME_LIMITS];
@@ -134,6 +145,8 @@ namespace VolumetricClouds
 
             private List<VolumetricCloudsVolume> m_CloudsVolumes = new List<VolumetricCloudsVolume>();
             
+            // Third-party adapt
+            private bool m_ThirdPartyInitialized = false;
 
             public VolumetricCloudsPass(string profilerTag, VolumetricCloudsSetting settings)
             {
@@ -147,6 +160,7 @@ namespace VolumetricClouds
             public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
             {
                 var volumesArray = FindObjectsOfType<VolumetricCloudsVolume>();
+                if (volumesArray.Length <= 0) return;
                 bool needRefresh = m_CloudsVolumes.Count != volumesArray.Length 
                                    || !m_CloudsMat.HasFloat("_VolumeCount")
                                    || m_CloudsMat.GetFloat("_VolumeCount") == 0;
@@ -181,6 +195,8 @@ namespace VolumetricClouds
                 // =============================
                 CreateMaterialIfNeeded();
                 
+                InitializeThirdPartyPlugin();
+                
                 // Update volumes first to get data
                 var camPos = renderingData.cameraData.camera.transform.position;
                 SortVolume(volumeCount, camPos);
@@ -198,7 +214,6 @@ namespace VolumetricClouds
                 // Test-Only parameters
                 m_CloudsMat.SetFloat("_Comparison", m_Settings.comparison);
                 m_CloudsMat.SetFloat("_FogPhase", m_Settings.fogPhase);
-                m_CloudsMat.SetFloat("_DistortStrength", m_Settings.distortionStrength);
                 
                 // Storm parameters (Test-Only now)
                 m_CloudsMat.SetFloat("_MakeAHole", m_Settings.makeAHole? 1.0f:0.0f);
@@ -312,6 +327,37 @@ namespace VolumetricClouds
                     }
                     m_CloudsMat = new Material(cloudsShader);
                 }
+            }
+
+            private void InitializeThirdPartyPlugin()
+            {
+                if (m_CloudsMat == null || m_ThirdPartyInitialized) return;
+                
+                // Atmospheric height fog
+                if (System.IO.File.Exists(
+                        "Assets/BOXOPHOBIC/Atmospheric Height Fog/Core/Includes/AtmosphericHeightFog.cginc"))
+                    
+                {
+                    m_CloudsMat.EnableKeyword(ATMOSPHERIC_HEIGHT_FOG_KEYWORD);
+                    m_CloudsMat.EnableKeyword(ATMOSPHERIC_HEIGHT_FOG_DEFAULTINSTAlL_KEYWORD);
+                    m_CloudsMat.DisableKeyword(ATMOSPHERIC_HEIGHT_FOG_CUSTOMINSTAlL_KEYWORD);
+                }
+                else if (System.IO.File.Exists(
+                             "Assets/09.ThirdParty/BOXOPHOBIC/Atmospheric Height Fog/Core/Includes/AtmosphericHeightFog.cginc"))
+                {
+                    m_CloudsMat.EnableKeyword(ATMOSPHERIC_HEIGHT_FOG_KEYWORD);
+                    m_CloudsMat.EnableKeyword(ATMOSPHERIC_HEIGHT_FOG_CUSTOMINSTAlL_KEYWORD);
+                    m_CloudsMat.DisableKeyword(ATMOSPHERIC_HEIGHT_FOG_DEFAULTINSTAlL_KEYWORD);
+                }
+                else
+                {
+                    m_CloudsMat.DisableKeyword(ATMOSPHERIC_HEIGHT_FOG_KEYWORD);
+                    m_CloudsMat.DisableKeyword(ATMOSPHERIC_HEIGHT_FOG_DEFAULTINSTAlL_KEYWORD);
+                    m_CloudsMat.DisableKeyword(ATMOSPHERIC_HEIGHT_FOG_CUSTOMINSTAlL_KEYWORD);
+                }
+
+                m_ThirdPartyInitialized = true;
+                
             }
 
             private void UpdateCoverageOverHeightTextures(int volumeCount, bool force)
@@ -628,6 +674,7 @@ namespace VolumetricClouds
                     m_CachedDetailTiling[i] = volume.detailTiling;
                     m_CachedDetailOffsets[i] = volume.detailOffset;
                     m_CachedDetailNoiseWeights[i] = volume.detailNoiseWeight;
+                    m_CachedDetailTurbulence[i] = volume.turbulence;
                     m_CachedDetailWindMultipliers[i] = volume.detailWindMultiplier;
                     
                     m_CachedLightSteps[i] = volume.lightSteps;
@@ -685,6 +732,7 @@ namespace VolumetricClouds
                 m_CloudsMat.SetFloatArray("_DetailTiling", m_CachedDetailTiling);
                 m_CloudsMat.SetVectorArray("_DetailOffset", m_CachedDetailOffsets);
                 m_CloudsMat.SetFloatArray("_DetailNoiseWeights", m_CachedDetailNoiseWeights);
+                m_CloudsMat.SetFloatArray("_DetailTurbulence", m_CachedDetailTurbulence);
                 m_CloudsMat.SetFloatArray("_DetailWindMultiplier", m_CachedDetailWindMultipliers);
                 
                 m_CloudsMat.SetFloatArray("_LightSteps", m_CachedLightSteps);
