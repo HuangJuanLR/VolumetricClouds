@@ -654,9 +654,9 @@ float4 CloudsRayMarching(float index, float3 rayStart, float3 rayDir, float view
     
     float transmittance = 1;
     float lightEnergy = 0;
-    float ambientEnergy = 0;
     float sunEnergy = 0;
     float4 fog = float4(0,0,0,0);
+    float3 ambientLight = 0;
     
     bool isHit = false;
     float3 firstHit;
@@ -741,7 +741,14 @@ float4 CloudsRayMarching(float index, float3 rayStart, float3 rayDir, float view
                 float heightContrib = lerp(1.0, height, _HeightInfluence[index]);
                 float ambientContribution = heightContrib * heightContrib;
                 
-                ambientEnergy += stepOpacity * transmittance * ambientContribution;
+                float3 centerToRayPos = normalize(rayPosLocal);
+                centerToRayPos = mul(localToWorld, float4(centerToRayPos, 0.0));
+                centerToRayPos = normalize(centerToRayPos);
+                float3 skyAmbient = DecodeHDREnvironment(SAMPLE_TEXTURECUBE_LOD(unity_SpecCube0, samplerunity_SpecCube0, centerToRayPos, (1 - lodFactor) * 4 + 2), unity_SpecCube0_HDR);
+                skyAmbient = saturate(skyAmbient);
+                skyAmbient = max(0.3, length(skyAmbient)) * normalize(skyAmbient + 0.001);
+                
+                ambientLight += stepOpacity * transmittance * skyAmbient * ambientContribution;
                 
                 // Sun Boost
                 float3 N = ComputeBoxNormal(rayPosLocal, boundsSize * 0.5, 1.0);
@@ -751,10 +758,9 @@ float4 CloudsRayMarching(float index, float3 rayStart, float3 rayDir, float view
                 float NoL = pow(saturate(dot(N, lightDirLocal)), 2.0);
                 float NoH = saturate(dot(N, H));
                 float specular = pow(NoH, 2.0) * 0.5;
-                float diffuse = saturate((NoL + 0.5) / 1.5);
+                // float diffuse = saturate((NoL + 0.5) / 1.5);
                 
                 sunEnergy += stepOpacity * transmittance * (sunBoost + specular) * shadowAtt;
-                // sunEnergy += stepOpacity * transmittance * shadowAtt * (diffuse + specular);
                 
                 // Fog
                 float4 fogParams = 0;
@@ -800,13 +806,7 @@ float4 CloudsRayMarching(float index, float3 rayStart, float3 rayDir, float view
     float3 additionalLights = additionalLightAcc * _ScatterTint[index];
     float3 sunLight = sunEnergy * _ScatterTint[index] * _MainLightColor.rgb;
     
-    float3 viewToClouds = normalize(firstHit);
-    float3 sampleDir = reflect(viewToClouds, float3(0,1,0));
-    float3 skyAmbient = DecodeHDREnvironment(SAMPLE_TEXTURECUBE_LOD(unity_SpecCube0, samplerunity_SpecCube0, sampleDir, (1 - lodFactor) * 4 + 2), unity_SpecCube0_HDR);
-    
-    skyAmbient = max(0.3, length(skyAmbient)) * normalize(skyAmbient + 0.001);
-    
-    float3 ambientLight = ambientEnergy * skyAmbient * _ScatterTint[index];
+    ambientLight *= _ScatterTint[index];
     
     float3 cloudsColor = directLight + additionalLights + ambientLight + sunLight;
     float cloudsAlpha = 1.0 - transmittance;

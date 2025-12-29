@@ -547,7 +547,14 @@ Shader "Hidden/Juan/VolumetricClouds"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/Shaders/PostProcessing/Common.hlsl"
+            
+            #ifdef ATMOSPHERIC_HEIGHT_FOG
+            #ifdef ATMOSPHERIC_HEIGHT_FOG_DEFAULTINSTAlL_KEYWORD
+            #include "Assets/BOXOPHOBIC/Atmospheric Height Fog/Core/Includes/AtmosphericHeightFog.cginc"
+            #elifdef ATMOSPHERIC_HEIGHT_FOG_CUSTOMINSTAlL_KEYWORD 
             #include "Assets/09.ThirdParty/BOXOPHOBIC/Atmospheric Height Fog/Core/Includes/AtmosphericHeightFog.cginc"
+            #endif
+            #endif
             
             TEXTURE2D(_VolumetricCloudsTex);
             TEXTURE2D(_VolumetricCloudsDepthTex);
@@ -599,7 +606,10 @@ Shader "Hidden/Juan/VolumetricClouds"
                 float distanceFade = smoothstep(_LightRaysDistanceFade, _LightRaysDistanceFade * 2, cloudsDepth);
                 
                 half3 nearColor = mainLight.color;
-                half3 farColor = lerp(mainLight.color, AHF_FogColorDuo, 0.5);
+                half3 farColor = mainLight.color;
+                #ifdef ATMOSPHERIC_HEIGHT_FOG
+                farColor = lerp(mainLight.color, AHF_FogColorDuo, 0.5);
+                #endif
                 half3 rayColor = lerp(nearColor, farColor, farFade * 0.4);
                 
                 float3 viewDir = normalize(input.viewDirWS);
