@@ -706,6 +706,10 @@ float4 CloudsRayMarching(float index, float3 rayStart, float3 rayDir, float view
                     isHit = true;
                 }
                 
+                float extinction = density * currentStep * _LightAbsorptionThroughCloud[index];
+                float stepTransmittance = exp(-extinction);
+                float stepOpacity = 1.0 - stepTransmittance;
+                
                 // Main Light
                 float lightTransmittance = 1.0;
                 float sunBoost;
@@ -713,13 +717,9 @@ float4 CloudsRayMarching(float index, float3 rayStart, float3 rayDir, float view
                 
                 float4 shadowCoord = TransformWorldToShadowCoord(rayPosWorld);
                 float shadowFade = GetMainLightShadowFade(rayPosWorld);
-                float shadowAtt = MainLightRealtimeShadow(shadowCoord); 
+                float shadowAtt = MainLightRealtimeShadow(shadowCoord);
                 shadowAtt = lerp(shadowAtt, 1.0, shadowFade);
                 shadowAtt = saturate(shadowAtt + 0.2);
-                
-                float extinction = density * currentStep * _LightAbsorptionThroughCloud[index];
-                float stepTransmittance = exp(-extinction);
-                float stepOpacity = 1.0 - stepTransmittance;
                 
                 lightEnergy += stepOpacity * transmittance * lightTransmittance * phaseVal * shadowAtt;
                 

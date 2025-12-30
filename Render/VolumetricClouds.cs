@@ -160,6 +160,8 @@ namespace VolumetricClouds
 
             public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
             {
+                CreateMaterialIfNeeded();
+                
                 var volumesArray = FindObjectsOfType<VolumetricCloudsVolume>();
                 if (volumesArray.Length <= 0) return;
                 bool needRefresh = m_CloudsVolumes.Count != volumesArray.Length 
@@ -194,8 +196,6 @@ namespace VolumetricClouds
                 // =============================
                 // Configure Material
                 // =============================
-                CreateMaterialIfNeeded();
-                
                 InitializeThirdPartyPlugin();
                 
                 // Update volumes first to get data
