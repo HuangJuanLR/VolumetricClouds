@@ -84,6 +84,7 @@ namespace VolumetricClouds
             private Quaternion[] m_CachedVolumeRotations = new Quaternion[VOLUME_LIMITS];
             
             private float[] m_CachedSteps = new float[VOLUME_LIMITS];
+            private float[] m_CahcedNoiseOffsets = new float[VOLUME_LIMITS];
             
             private Vector4[] m_CachedBoundsMins = new Vector4[VOLUME_LIMITS];
             private Vector4[] m_CachedBoundsMaxes = new Vector4[VOLUME_LIMITS];
@@ -633,6 +634,7 @@ namespace VolumetricClouds
                     var worldBounds = volume.WorldBounds;
 
                     m_CachedSteps[i] = volume.steps;
+                    m_CahcedNoiseOffsets[i] = volume.noiseOffset;
                     m_CachedBoundsMins[i] = center - bounds.extents;
                     m_CachedBoundsMaxes[i] = center + bounds.extents;
                     m_CachedWorldBoundsMins[i] = worldBounds.min;
@@ -701,6 +703,7 @@ namespace VolumetricClouds
                 m_CloudsMat.SetInt("_FrameIndex", Time.frameCount % 16);
                 
                 m_CloudsMat.SetFloatArray("_Steps", m_CachedSteps);
+                m_CloudsMat.SetFloatArray("_NoiseOffsets", m_CahcedNoiseOffsets);
                 m_CloudsMat.SetVectorArray("_BoundsMin", m_CachedBoundsMins);
                 m_CloudsMat.SetVectorArray("_BoundsMax", m_CachedBoundsMaxes);
                 m_CloudsMat.SetVectorArray("_WorldBoundsMin", m_CachedWorldBoundsMins);

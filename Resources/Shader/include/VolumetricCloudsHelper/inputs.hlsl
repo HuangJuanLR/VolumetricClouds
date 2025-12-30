@@ -26,6 +26,7 @@ float _VolumeCount;
 // Shape
 // =============================
 float _Steps[VOLUME_LIMITS];
+float _NoiseOffsets[VOLUME_LIMITS];
 float4 _BoundsMin[VOLUME_LIMITS];
 float4 _BoundsMax[VOLUME_LIMITS];
 float4 _WorldBoundsMin[VOLUME_LIMITS];

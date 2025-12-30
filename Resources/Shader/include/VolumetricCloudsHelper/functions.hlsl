@@ -413,7 +413,7 @@ float LightRayMarching(float3 rayPosOS, float3 lightDirOS, float3 boundsSize, fl
     float3 coneUp = cross(coneRight, lightDirOS);
     
     float2 blueNoiseUV = uv + float2(_TemporalFrameIndex * 0.4356, _TemporalFrameIndex * 0.9786);
-    float blueNoise = SAMPLE_TEXTURE2D(_BlueNoise, sampler_LinearRepeat, blueNoiseUV * _ScaledScreenParams.xy).x;
+    float blueNoise = SAMPLE_TEXTURE2D(_BlueNoise, sampler_LinearRepeat, blueNoiseUV * _ScreenParams.xy).y;
     
     float coneAngle = blueNoise * TWO_PI;
     float2 coneRotation = float2(cos(coneAngle), sin(coneAngle));
@@ -430,11 +430,10 @@ float LightRayMarching(float3 rayPosOS, float3 lightDirOS, float3 boundsSize, fl
         if (i == maxSteps - 1) stepMultiplier *= 6.0;
         float currentStep = stepSize * stepMultiplier;
         
-        // float stepJitter = frac(jitter + i * 0.618034);
-        // float jitteredStep = currentStep * (0.2 + stepJitter * 0.5);
-        // jitteredStep = currentStep;
+        float stepJitter = frac(blueNoise + i * 0.618034);
+        float jitteredStep = currentStep * (0.2 + stepJitter * 0.5);
         
-        currentPos += lightDirOS * currentStep;
+        currentPos += lightDirOS * jitteredStep;
         
         float coneRadius = stepSize * lerp(0.2, 2.0, float(i) / (maxSteps - 1));
         float3 coneOffset = (coneRight * coneRotation.x + coneUp * coneRotation.y) * coneRadius;
@@ -448,7 +447,7 @@ float LightRayMarching(float3 rayPosOS, float3 lightDirOS, float3 boundsSize, fl
         
         if (sampleDensity > 0)
         {
-            totalDensity += sampleDensity * currentStep;
+            totalDensity += sampleDensity * jitteredStep;
         }
     }
     
@@ -575,18 +574,6 @@ float4 CloudsRayMarching(float index, float3 rayStart, float3 rayDir, float view
     float3 realLocalMin = min(localMin, localMax);
     float3 realLocalMax = max(localMin, localMax);
     
-    // rayStart + t0 * rayDir = 0.0
-    // rayStart + t1 * rayDir = 1.0
-    // float3 invRayDir = rcp(rayDir);
-    // float3 t0 = (_BoundsMin[index] - rayStart) * invRayDir;
-    // float3 t1 = (_BoundsMax[index] - rayStart) * invRayDir;
-    // float3 tmin = min(t0, t1);
-    // float3 tmax = max(t0, t1);
-    //
-    // float tNear = max(max(tmin.x, tmin.y), tmin.z);
-    // tNear = max(0, tNear);
-    // float tFar = min(min(tmax.x, tmax.y), tmax.z);
-    
     float3 invRayDirLocal = rcp(rayDirLocal);
     float3 t0 = (realLocalMin - rayStartLocal) * invRayDirLocal;
     float3 t1 = (realLocalMax - rayStartLocal) * invRayDirLocal;
@@ -611,10 +598,10 @@ float4 CloudsRayMarching(float index, float3 rayStart, float3 rayDir, float view
     
     // 256x256 BlueNoise Texture + Interleaved Gradient Noise
     float2 blueNoiseUV = uv + float2(_TemporalFrameIndex * 0.75487, _TemporalFrameIndex * 0.56783);
-    float4 blueNoiseTex = SAMPLE_TEXTURE2D(_BlueNoise, sampler_LinearRepeat, blueNoiseUV * _ScaledScreenParams.xy); 
+    float4 blueNoiseTex = SAMPLE_TEXTURE2D_LOD(_BlueNoise, sampler_LinearRepeat, uv * _ScreenParams.xy, 0); 
     float blueNoise = blueNoiseTex.x; 
-    float interleavedGradient = InterleavedGradientNoise(uv * _ScaledScreenParams.xy, _TemporalFrameIndex);
-    float combinedNoise = frac(blueNoise + interleavedGradient * 0.5);
+    float interleavedGradient = InterleavedGradientNoise(uv * _ScreenParams.xy, _TemporalFrameIndex);
+    float combinedNoise = frac(blueNoise + interleavedGradient * 0.25);
     
     // float rayLength = min(eyeDepth - tNear, tFar - tNear);
     
@@ -637,8 +624,8 @@ float4 CloudsRayMarching(float index, float3 rayStart, float3 rayDir, float view
     
     float stepSize = rayLengthLocal / adaptiveSteps;
     
-    float noiseOffset = tNear > 0? combinedNoise * stepSize * 2.0 : combinedNoise * stepSize * 0.5;
-    
+    // float noiseOffset = tNear > 0? combinedNoise * stepSize * 2 : combinedNoise * stepSize * 0.5;
+    float noiseOffset = combinedNoise * stepSize * _NoiseOffsets[index];
     float cheapStepSize = stepSize * 2.0;
     
     // float3 rayPos = rayStart + rayDir * (tNear + noiseOffset);
@@ -666,6 +653,7 @@ float4 CloudsRayMarching(float index, float3 rayStart, float3 rayDir, float view
     float currentStep = cheapStepSize;
     float dstTraveled = noiseOffset;
     float3 additionalLightAcc = 0;
+    float jitterOffset = 0.0;
     
     [loop]
     for (int i = 0; i < int(adaptiveSteps) * 4; i++)
@@ -681,7 +669,7 @@ float4 CloudsRayMarching(float index, float3 rayStart, float3 rayDir, float view
         float lodAdjustedStep = currentStep * lodStepMultiplier;
         
         float sampleJitter = frac(combinedNoise + i * 0.618034 + i * i * 0.0073);
-        float3 jitteredPos = rayPosLocal + rayDirLocal * (sampleJitter - 0.5) * currentStep * 0.5;
+        float3 jitteredPos = rayPosLocal + rayDirLocal * sampleJitter * currentStep * jitterOffset;
         
         float3 rayPosWorld = mul(localToWorld, float4(rayPosLocal, 1.0)).xyz;
         float3 worldMin = _WorldBoundsMin[index];
@@ -708,6 +696,8 @@ float4 CloudsRayMarching(float index, float3 rayStart, float3 rayDir, float view
             }
             else
             {
+                jitterOffset = lerp(0.0, _NoiseOffsets[index], density);
+                
                 zeroDensityCount = 0;
                 if (transmittance >= 0.5 && !isHit)
                 {
@@ -790,7 +780,7 @@ float4 CloudsRayMarching(float index, float3 rayStart, float3 rayDir, float view
                     cheapMode = true;
                     currentStep = cheapStepSize * lodStepMultiplier;
                     zeroDensityCount = 0;
-                    
+                    jitterOffset = 0.0;
                     rayPosLocal -= rayDirLocal * currentStep;
                 }
             }

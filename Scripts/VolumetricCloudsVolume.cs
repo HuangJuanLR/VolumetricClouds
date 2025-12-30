@@ -26,6 +26,7 @@ namespace VolumetricClouds
     {
         [Header("Basic")]
         [NameTag("步进次数")][Range(1, 1024)]public int steps = 64;
+        [NameTag("步进偏移")][Range(0.1f, 10.0f)] public float noiseOffset = 2.0f;
         [NameTag("密度")][Range(0.0f, 10.0f)]public float density = 1.0f;
         [NameTag("覆盖范围")][Range(0.0f, 5.0f)] public float coverage = 1.0f;
         [NameTag("边缘衰减")][Range(0.0f, 1.0f)] public float edgeFadeDistance = 0.0f;
