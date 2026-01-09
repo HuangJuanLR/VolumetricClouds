@@ -38,6 +38,10 @@ Shader "Hidden/Juan/VolumetricClouds"
             #include "include/VolumetricCloudsHelper/inputs.hlsl"
             #include "include/VolumetricCloudsHelper/functions.hlsl"
             
+            #ifndef VOLUME_LIMITS
+            #define VOLUME_LIMITS 8
+            #endif
+            
             struct appData
             {
                 uint vertexID : SV_VertexID;
@@ -56,6 +60,39 @@ Shader "Hidden/Juan/VolumetricClouds"
                 half4 color: SV_Target0;
                 float depth: SV_Target1;
             };
+            
+            bool RayBoxIntersect(int index, float3 rayStart, float3 rayDir, out float tNearWorld, out float tFarWorld)
+            {
+                float4x4 worldToLocal = _VolumeWorldToLocal[index];
+                
+                float3 rayStartLocal = mul(worldToLocal, float4(rayStart, 1.0)).xyz;
+                float3 rayDirLocal = mul(worldToLocal, float4(rayDir, 0.0)).xyz;
+                float rayDirLocalLength = length(rayDirLocal);
+                rayDirLocal = normalize(rayDirLocal);
+                
+                float3 boundsMin = _BoundsMin[index];
+                float3 boundsMax = _BoundsMax[index];
+                float3 boundsSize = boundsMax - boundsMin;
+                
+                float3 localMin = -boundsSize * 0.5;
+                float3 localMax = boundsSize * 0.5;
+                
+                float3 invRayDirLocal = rcp(rayDirLocal);
+                float3 t0 = (localMin - rayStartLocal) * invRayDirLocal;
+                float3 t1 = (localMax - rayStartLocal) * invRayDirLocal;
+                float3 tmin = min(t0, t1);
+                float3 tmax = max(t0, t1);
+                
+                float tNear = max(max(tmin.x, tmin.y), tmin.z);
+                tNear = max(0, tNear);
+                float tFar = min(min(tmax.x, tmax.y), tmax.z);
+                
+                // Convert to world space distances
+                tNearWorld = tNear / rayDirLocalLength;
+                tFarWorld = tFar / rayDirLocalLength;
+                
+                return tNear < tFar && tFar > 0;
+            }
             
             v2f vert(appData v)
             {
@@ -85,6 +122,7 @@ Shader "Hidden/Juan/VolumetricClouds"
                 [loop]
                 for (int i = 0; i < _VolumeCount; i++)
                 {
+                    if (accColor.a >= 0.99) break;
                     float volumeDepth = _ProjectionParams.z;
                     float4 rayResult = CloudsRayMarching(i, rayStart, rayDir, rayLength, input.uv, volumeDepth);
                     
@@ -96,7 +134,6 @@ Shader "Hidden/Juan/VolumetricClouds"
                     accColor.rgb = accColor.rgb + rayResult.rgb * (1 - accColor.a);
                     accColor.a += rayResult.a * (1 - accColor.a);
                     accColor.a = saturate(accColor.a);   
-                    
                 }
                 
                 if (depth >= _ProjectionParams.z * 0.99) depth = 0.0;

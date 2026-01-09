@@ -24,12 +24,15 @@ namespace VolumetricClouds
     [ExecuteAlways]
     public class VolumetricCloudsVolume : MonoBehaviour
     {
+        [Header("Profile")] 
+        public VolumetricCloudsVolumeProfile profile;
+        
         [Header("Basic")]
         [NameTag("步进次数")][Range(1, 1024)]public int steps = 64;
         [NameTag("步进偏移")][Range(0.1f, 10.0f)] public float noiseOffset = 2.0f;
         [NameTag("密度")][Range(0.0f, 10.0f)]public float density = 1.0f;
         [NameTag("覆盖范围")][Range(0.0f, 5.0f)] public float coverage = 1.0f;
-        [NameTag("边缘衰减")][Range(0.0f, 1.0f)] public float edgeFadeDistance = 0.0f;
+        [NameTag("边缘衰减(世界)")][Min(0.0f)] public float edgeFadeDistance = 0.0f;
         [NameTag("LOD近距离")][Range(0.1f, 1000.0f)] public float lodNear = 500.0f;
         [NameTag("LOD远距离")][Range(100.0f, 2000.0f)] public float lodFar = 2000.0f;
         [NameTag("高度衰减")]public AnimationCurve coverageOverHeight = AnimationCurve.Linear(0f, 1f, 1f, 1f);
@@ -58,8 +61,9 @@ namespace VolumetricClouds
         [NameTag("噪波强度")][Range(0.0f, 1.0f)]public float detailNoiseWeight = 1.0f;
         [NameTag("扰动强度")]public float turbulence = 50.0f;
         [NameTag("速度")][Range(0.0f, 5.0f)]public float detailWindMultiplier = 0.0f;
-        
-        [Header("Lighting")] 
+
+        [Header("Lighting")]
+        [NameTag("额外光源数")][Min(0)]public int maxAdditionalLights = 4;
         [NameTag("光照步进")][Range(4,12)] public int lightSteps = 6;
         [NameTag("高度遮蔽")][Range(0.0f, 1.0f)] public float heightInfluence = 1.0f;
         [NameTag("密度吸光率")][Min(0.1f)]public float lightAbsorptionThroughCloud = 1.0f;
@@ -147,6 +151,7 @@ namespace VolumetricClouds
         private void OnValidate()
         {
             BakeCoverageHeightCurve();
+            
             m_IsDirty = true;
         }
 

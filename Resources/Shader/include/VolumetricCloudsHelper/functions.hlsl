@@ -215,7 +215,7 @@ float SampleDensity(float3 rayPosOS, int index, bool sampleDetail, float lod, fl
     float3 distToMin = rayPosOS - localMin;
     float3 distToMax = localMax - rayPosOS;
     float3 minDistToEdge = min(distToMin, distToMax);
-    float edgeFadeDist = lerp(0.0, length(size) * 0.5, _EdgeFadeDistance[index]);
+    float edgeFadeDist = _EdgeFadeDistance[index];
     float minDist = min(minDistToEdge.y, min(minDistToEdge.x, minDistToEdge.z));
     float edgeWeight = smoothstep(0.0, 2.0, minDist / edgeFadeDist);
     edgeWeight = saturate(edgeWeight);

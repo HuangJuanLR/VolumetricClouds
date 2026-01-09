@@ -161,10 +161,28 @@ namespace VolumetricClouds
             public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
             {
                 CreateMaterialIfNeeded();
-                
+
                 var volumesArray = FindObjectsOfType<VolumetricCloudsVolume>();
-                if (volumesArray.Length <= 0) return;
-                bool needRefresh = m_CloudsVolumes.Count != volumesArray.Length 
+                var activeVolumes = new List<VolumetricCloudsVolume>();
+
+                foreach (var vol in volumesArray)
+                {
+                    if (vol != null && vol.isActiveAndEnabled && vol.enabled)
+                    {
+                        activeVolumes.Add(vol);
+                    }
+                }
+
+                if (activeVolumes.Count <= 0)
+                {
+                    if (m_CloudsMat != null && m_CloudsMat.HasFloat("_VolumeCount"))
+                    {
+                        m_CloudsMat.SetFloat("_VolumeCount", 0);
+                    }
+                    return;
+                }
+                
+                bool needRefresh = m_CloudsVolumes.Count != activeVolumes.Count 
                                    || !m_CloudsMat.HasFloat("_VolumeCount")
                                    || m_CloudsMat.GetFloat("_VolumeCount") == 0;
                 if (!needRefresh)
@@ -182,7 +200,7 @@ namespace VolumetricClouds
                 if(needRefresh)
                 {
                     m_CloudsVolumes.Clear();
-                    m_CloudsVolumes.AddRange(FindObjectsOfType<VolumetricCloudsVolume>());
+                    m_CloudsVolumes.AddRange(activeVolumes);
                     m_NeedSorting = true;
                     m_CachedCameraPosition = Vector3.negativeInfinity;
                 }
@@ -812,14 +830,14 @@ namespace VolumetricClouds
 
             private int CollectAdditionalLights(ref RenderingData renderingData)
             {
-                var visibleLights = renderingData.lightData.visibleLights;
-                int mainLightIndex = renderingData.lightData.mainLightIndex;
-
                 Vector3 volumeCenter = Vector3.zero;
+                int maxLightsForVolume = ADDITIONAL_LIGHTS_LIMITS;
+    
                 if (m_CloudsVolumes.Count != 0)
                 {
                     Vector3 camPos = renderingData.cameraData.camera.transform.position;
                     float closestDist = float.MaxValue;
+                    VolumetricCloudsVolume closestVolume = null;
 
                     foreach (var vol in m_CloudsVolumes)
                     {
@@ -828,56 +846,48 @@ namespace VolumetricClouds
                         {
                             closestDist = dist;
                             volumeCenter = vol.transform.position;
+                            closestVolume = vol;
                         }
                     }
-                }
-
-                var availableLights = new List<(int index, float distance)>();
-
-                for (int i = 0; i < visibleLights.Length; i++)
-                {
-                    if (i == mainLightIndex) continue;
-                    var visibleLight = visibleLights[i];
-                    var light = visibleLight.light;
-
-                    if (light == null) continue;
-                    if (visibleLight.lightType != LightType.Point && light.type != LightType.Spot) continue;
-
-                    Vector3 lightPos = visibleLight.localToWorldMatrix.GetColumn(3);
-                    float distance = Vector3.Distance(lightPos, volumeCenter);
-                    availableLights.Add((i, distance));
+        
+                    if (closestVolume != null)
+                    {
+                        maxLightsForVolume = Mathf.Max(closestVolume.maxAdditionalLights, 0);
+                    }
                 }
                 
-                availableLights.Sort((a, b) => a.distance.CompareTo(b.distance));
-                
+                var sortedLights = VolumetricCloudsLight.GetSortedLights(volumeCenter, maxLightsForVolume);
+    
                 int lightCount = 0;
-                int maxLights = Mathf.Min(ADDITIONAL_LIGHTS_LIMITS, availableLights.Count);
+                int maxLights = Mathf.Min(ADDITIONAL_LIGHTS_LIMITS, sortedLights.Count);
 
                 for (int i = 0; i < maxLights; i++)
                 {
-                    int j = availableLights[i].index;
-                    var visibleLight = visibleLights[j];
-                    var light = visibleLight.light;
+                    var cloudsLight = sortedLights[i];
+                    var light = cloudsLight.Light;
+
+                    if (light == null) continue;
+                    if (light.type != LightType.Point && light.type != LightType.Spot) continue;
 
                     AdditionalLightData lightData = new AdditionalLightData();
 
                     lightData.positionWS = new Vector4(
-                        visibleLight.localToWorldMatrix.GetColumn(3).x,
-                        visibleLight.localToWorldMatrix.GetColumn(3).y,
-                        visibleLight.localToWorldMatrix.GetColumn(3).z,
-                        visibleLight.range
+                        light.transform.position.x,
+                        light.transform.position.y,
+                        light.transform.position.z,
+                        light.range
                         );
 
-                    Vector3 forward = visibleLight.localToWorldMatrix.GetColumn(2);
-                    float spotAngleCos = Mathf.Cos(visibleLight.spotAngle * 0.5f * Mathf.Deg2Rad);
+                    Vector3 forward = light.transform.forward;
+                    float spotAngleCos = Mathf.Cos(light.spotAngle * 0.5f * Mathf.Deg2Rad);
                     lightData.directionWS = new Vector4(forward.x, forward.y, forward.z, spotAngleCos);
 
-                    Color linearColor = visibleLight.finalColor;
+                    Color linearColor = light.color * light.intensity;
                     float lightType = light.type == LightType.Spot ? 1.0f : 0.0f;
                     lightData.color = new Vector4(linearColor.r, linearColor.g, linearColor.b, lightType);
 
-                    float invRangeSqr = 1.0f / Mathf.Max(visibleLight.range * visibleLight.range, 0.0001f);
-                    float spotOuterAngleCos = Mathf.Cos(visibleLight.spotAngle * 0.5f * Mathf.Deg2Rad);
+                    float invRangeSqr = 1.0f / Mathf.Max(light.range * light.range, 0.0001f);
+                    float spotOuterAngleCos = Mathf.Cos(light.spotAngle * 0.5f * Mathf.Deg2Rad);
                     float spotInnerAngleCos = Mathf.Cos(light.innerSpotAngle * 0.5f * Mathf.Deg2Rad);
                     lightData.attenuation = new Vector4(invRangeSqr, spotOuterAngleCos, spotInnerAngleCos, 0f);
 
