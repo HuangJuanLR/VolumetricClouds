@@ -227,7 +227,15 @@ float SampleDensity(float3 rayPosOS, int index, bool sampleDetail, float lod, fl
     float3 timeOffset;
     float3 windOffset = CalculateWindOffset(index, height, timeOffset);
     
-    float3 shapeOffsetPos = (rayPosOS + windOffset * _ShapeWindMultiplier[index]) * 0.001;
+    float3 shapeOffsetPos;
+    if (_UseFixedShape[index] > 0.5)
+    {
+        shapeOffsetPos = ((rayPosOS - localMin) * 1000 / size + windOffset * _ShapeWindMultiplier[index]) * 0.001;
+    }
+    else
+    {
+        shapeOffsetPos = (rayPosOS + windOffset * _ShapeWindMultiplier[index]) * 0.001;
+    }
     float3 shapeUVW = shapeOffsetPos * _ShapeTiling[index] + _ShapeOffset[index];
 
     float coverage = 1.0;
@@ -286,7 +294,15 @@ float SampleDensity(float3 rayPosOS, int index, bool sampleDetail, float lod, fl
     cn = SAMPLE_TEXTURE3D_LOD(_ShapeNoise, sampler_LinearRepeat, shapeUVW + float3(0.5,0.5,0.5), 0);
     float3 curlOffset = float3(cn.x, cn.y, cn.z) * 2.0 - 1.0;
     
-    float3 detailSamplePos = rayPosOS + curlOffset * (1.0 - height) * _DetailTurbulence[index];
+    float3 detailSamplePos;
+    if (_UseFixedDetail[index] > 0.5)
+    {
+        detailSamplePos = (rayPosOS - localMin) * 1000 / size + curlOffset * (1.0 - height) * _DetailTurbulence[index];
+    }
+    else
+    {
+        detailSamplePos = rayPosOS + curlOffset * (1.0 - height) * _DetailTurbulence[index];
+    }
     float3 detailOffsetPos = (detailSamplePos + windOffset * _DetailWindMultiplier[index]) * 0.001;
     float3 detailUVW = detailOffsetPos * _DetailTiling[index] + _DetailOffset[index];
     
@@ -499,7 +515,7 @@ float3 ApproximateAdditionalLights(float index, float3 rayPosWorld, float3 rayDi
     float3 additionalLightContrib = 0;
     
     [loop]
-    for (uint lightIndex = 0; lightIndex < _AddLightsCount; lightIndex++)
+    for (uint lightIndex = 0; lightIndex < _AddLightsCount[index]; lightIndex++)
     {
         AdditionalLightData light = _AdditionalLightsBuffer[lightIndex];
         

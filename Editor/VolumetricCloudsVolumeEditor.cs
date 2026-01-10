@@ -138,11 +138,13 @@ namespace VolumetricCLoudsEditor
             profile.anvilBias = volume.anvilBias;
 
             // Shape
+            profile.useFixedShape = volume.useFixedShape;
             profile.shapeTiling = volume.shapeTiling;
             profile.shapeOffset = volume.shapeOffset;
             profile.shapeWindMultiplier = volume.shapeWindMultiplier;
 
             // Detail
+            profile.useFixedDetail = volume.useFixedDetail;
             profile.detailTiling = volume.detailTiling;
             profile.detailOffset = volume.detailOffset;
             profile.detailNoiseWeight = volume.detailNoiseWeight;
@@ -197,11 +199,13 @@ namespace VolumetricCLoudsEditor
             volume.anvilBias = profile.anvilBias;
 
             // Shape
+            volume.useFixedShape = profile.useFixedShape;
             volume.shapeTiling = profile.shapeTiling;
             volume.shapeOffset = profile.shapeOffset;
             volume.shapeWindMultiplier = profile.shapeWindMultiplier;
 
             // Detail
+            volume.useFixedDetail = profile.useFixedDetail;
             volume.detailTiling = profile.detailTiling;
             volume.detailOffset = profile.detailOffset;
             volume.detailNoiseWeight = profile.detailNoiseWeight;

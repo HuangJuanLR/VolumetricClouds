@@ -108,16 +108,19 @@ namespace VolumetricClouds
             
             private float[] m_CachedHeightInfluences = new float[VOLUME_LIMITS];
             
+            private float[] m_CachedUseFixedShape = new float[VOLUME_LIMITS];
             private float[] m_CachedShapeTiling = new float[VOLUME_LIMITS];
             private Vector4[] m_CachedShapeOffsets = new Vector4[VOLUME_LIMITS];
             private float[] m_CachedShapeWindMultipliers = new float[VOLUME_LIMITS];
             
+            private float[] m_CachedUseFixedDetail = new float[VOLUME_LIMITS];
             private float[] m_CachedDetailTiling = new float[VOLUME_LIMITS];
             private Vector4[] m_CachedDetailOffsets = new Vector4[VOLUME_LIMITS];
             private float[] m_CachedDetailNoiseWeights = new float[VOLUME_LIMITS];
             private float[] m_CachedDetailTurbulence = new float[VOLUME_LIMITS];
             private float[] m_CachedDetailWindMultipliers = new float[VOLUME_LIMITS];
             
+            private float[] m_CachedAdditionalLightsCount = new float[ADDITIONAL_LIGHTS_LIMITS];
             private float[] m_CachedLightSteps = new float[VOLUME_LIMITS];
             private float[] m_CachedLightAbsorptionThroughCloud = new float[VOLUME_LIMITS];
             private float[] m_CachedLightAbsorptionTowardsSun = new float[VOLUME_LIMITS];
@@ -329,7 +332,6 @@ namespace VolumetricClouds
                 
                 m_AdditionalLightsBuffer.SetData(m_LightDataArray);
                 m_CloudsMat.SetBuffer("_AdditionalLightsBuffer", m_AdditionalLightsBuffer);
-                m_CloudsMat.SetInt("_AddLightsCount", additionalLightsCount);
 
                 ConfigureInput(ScriptableRenderPassInput.Depth | ScriptableRenderPassInput.Color);
             }
@@ -687,16 +689,19 @@ namespace VolumetricClouds
                     m_CachedWindDirections[i] = volume.windDirection;
                     m_CachedWeatherMapWindMultipliers[i] = volume.weatherMapWindMultiplier;
                     
+                    m_CachedUseFixedShape[i] = volume.useFixedShape? 1.0f : 0.0f;
                     m_CachedShapeTiling[i] = volume.shapeTiling;
                     m_CachedShapeOffsets[i] = volume.shapeOffset;
                     m_CachedShapeWindMultipliers[i] = volume.shapeWindMultiplier;
                     
+                    m_CachedUseFixedDetail[i] = volume.useFixedDetail? 1.0f : 0.0f;
                     m_CachedDetailTiling[i] = volume.detailTiling;
                     m_CachedDetailOffsets[i] = volume.detailOffset;
                     m_CachedDetailNoiseWeights[i] = volume.detailNoiseWeight;
                     m_CachedDetailTurbulence[i] = volume.turbulence;
                     m_CachedDetailWindMultipliers[i] = volume.detailWindMultiplier;
-                    
+
+                    m_CachedAdditionalLightsCount[i] = Mathf.Min(volume.maxAdditionalLights, m_LightDataArray.Length);
                     m_CachedLightSteps[i] = volume.lightSteps;
                     m_CachedLightAbsorptionThroughCloud[i] = volume.lightAbsorptionThroughCloud;
                     m_CachedLightAbsorptionTowardsSun[i] = volume.lightAbsorptionTowardsSun;
@@ -744,11 +749,13 @@ namespace VolumetricClouds
                 m_CloudsMat.SetVectorArray("_WindDirection", m_CachedWindDirections);
                 m_CloudsMat.SetFloatArray("_WeatherMapFlowMultiplier", m_CachedWeatherMapWindMultipliers);
                 
+                m_CloudsMat.SetFloatArray("_UseFixedShape", m_CachedUseFixedShape);
                 m_CloudsMat.SetTexture("_ShapeNoise", m_Settings.shapeNoise);
                 m_CloudsMat.SetFloatArray("_ShapeTiling", m_CachedShapeTiling);
                 m_CloudsMat.SetVectorArray("_ShapeOffset", m_CachedShapeOffsets);
                 m_CloudsMat.SetFloatArray("_ShapeWindMultiplier", m_CachedShapeWindMultipliers);
                 
+                m_CloudsMat.SetFloatArray("_UseFixedDetail", m_CachedUseFixedDetail);
                 m_CloudsMat.SetTexture("_DetailNoise", m_Settings.detailNoise);
                 m_CloudsMat.SetFloatArray("_DetailTiling", m_CachedDetailTiling);
                 m_CloudsMat.SetVectorArray("_DetailOffset", m_CachedDetailOffsets);
@@ -756,6 +763,7 @@ namespace VolumetricClouds
                 m_CloudsMat.SetFloatArray("_DetailTurbulence", m_CachedDetailTurbulence);
                 m_CloudsMat.SetFloatArray("_DetailWindMultiplier", m_CachedDetailWindMultipliers);
                 
+                m_CloudsMat.SetFloatArray("_AddLightsCount", m_CachedAdditionalLightsCount);
                 m_CloudsMat.SetFloatArray("_LightSteps", m_CachedLightSteps);
                 m_CloudsMat.SetFloatArray("_LightAbsorptionThroughCloud", m_CachedLightAbsorptionThroughCloud);
                 m_CloudsMat.SetFloatArray("_LightAbsorptionTowardsSun", m_CachedLightAbsorptionTowardsSun);

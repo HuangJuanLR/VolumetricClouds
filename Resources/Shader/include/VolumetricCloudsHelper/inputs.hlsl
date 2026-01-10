@@ -41,9 +41,11 @@ float _LODNear[VOLUME_LIMITS];
 float _LODFar[VOLUME_LIMITS];
 Texture2D<float> _CoverageOverHeightCurve;
 
+float _UseFixedShape[VOLUME_LIMITS];
 float _ShapeTiling[VOLUME_LIMITS];
 float3 _ShapeOffset[VOLUME_LIMITS];
 
+float _UseFixedDetail[VOLUME_LIMITS];
 float _DetailTiling[VOLUME_LIMITS];
 float3 _DetailOffset[VOLUME_LIMITS];
 float _DetailNoiseWeights[VOLUME_LIMITS];
@@ -79,7 +81,7 @@ float4 _SilverParams[VOLUME_LIMITS];
 
 // Additional Lights
 StructuredBuffer<AdditionalLightData> _AdditionalLightsBuffer;
-int _AddLightsCount;
+int _AddLightsCount[VOLUME_LIMITS];
 
 // Test
 float _Comparison;

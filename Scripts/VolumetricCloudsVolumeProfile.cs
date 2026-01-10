@@ -30,12 +30,14 @@ namespace VolumetricClouds
         [NameTag("速度强度")][Range(0.0f, 5.0f)] public float weatherMapWindMultiplier = 0.0f;
         [NameTag("顶部厚度增强")][Range(0.0f, 1.0f)] public float anvilBias = 0.5f;
         
-        [Header("Shape")]
+        [Header("Shape")] 
+        [NameTag("固定形状")]public bool useFixedShape = false;
         [NameTag("形状平铺")]public float shapeTiling = 1.0f;
         [NameTag("形状偏移")]public Vector3 shapeOffset = Vector3.zero;
         [NameTag("速度")][Range(0.0f, 5.0f)]public float shapeWindMultiplier = 0.0f;
         
         [Header("Detail")] 
+        [NameTag("固定细节")]public bool useFixedDetail = false;
         [NameTag("噪波平铺")]public float detailTiling = 10.0f;
         [NameTag("噪波偏移")]public Vector3 detailOffset = Vector3.zero;
         [NameTag("噪波强度")][Range(0.0f, 1.0f)]public float detailNoiseWeight = 1.0f;
