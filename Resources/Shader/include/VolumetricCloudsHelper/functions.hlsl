@@ -542,7 +542,7 @@ float3 ApproximateAdditionalLights(float index, float3 rayPosWorld, float3 rayDi
         if (attenuation < 0.01) continue;
         
         float cosTheta = dot(rayDir, lightDir);
-        float phaseVal = HG(cosTheta, 0.8);
+        float phaseVal = HG(cosTheta, light.attenuation.w);
         
         float beer = saturate(exp(-density * 5.0));
         float3 contrib = lightColor * attenuation * phaseVal * beer;

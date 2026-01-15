@@ -16,6 +16,7 @@ namespace VolumetricClouds
         private static List<VolumetricCloudsLight> s_RegisteredLights = new List<VolumetricCloudsLight>();
         
         public int priority = 0;
+        [Range(0.0f, 0.98f)]public float phase = 0.5f;
         
         private Light m_Light;
         

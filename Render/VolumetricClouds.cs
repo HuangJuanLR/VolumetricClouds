@@ -897,7 +897,7 @@ namespace VolumetricClouds
                     float invRangeSqr = 1.0f / Mathf.Max(light.range * light.range, 0.0001f);
                     float spotOuterAngleCos = Mathf.Cos(light.spotAngle * 0.5f * Mathf.Deg2Rad);
                     float spotInnerAngleCos = Mathf.Cos(light.innerSpotAngle * 0.5f * Mathf.Deg2Rad);
-                    lightData.attenuation = new Vector4(invRangeSqr, spotOuterAngleCos, spotInnerAngleCos, 0f);
+                    lightData.attenuation = new Vector4(invRangeSqr, spotOuterAngleCos, spotInnerAngleCos, cloudsLight.phase);
 
                     m_LightDataArray[lightCount] = lightData;
                     lightCount++;

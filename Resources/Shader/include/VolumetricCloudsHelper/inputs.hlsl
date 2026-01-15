@@ -7,7 +7,7 @@ struct AdditionalLightData
     float4 positionWS;
     float4 directionWS; // spot only
     float4 color;
-    float4 attenuation; // x = 1/range^2, y = spot outer angle cos, z = spot inner angle cos, w = unused
+    float4 attenuation; // x = 1/range^2, y = spot outer angle cos, z = spot inner angle cos, w = phase
 };
 
 // =============================

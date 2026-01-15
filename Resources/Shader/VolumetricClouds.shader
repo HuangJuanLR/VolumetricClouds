@@ -61,39 +61,6 @@ Shader "Hidden/Juan/VolumetricClouds"
                 float depth: SV_Target1;
             };
             
-            bool RayBoxIntersect(int index, float3 rayStart, float3 rayDir, out float tNearWorld, out float tFarWorld)
-            {
-                float4x4 worldToLocal = _VolumeWorldToLocal[index];
-                
-                float3 rayStartLocal = mul(worldToLocal, float4(rayStart, 1.0)).xyz;
-                float3 rayDirLocal = mul(worldToLocal, float4(rayDir, 0.0)).xyz;
-                float rayDirLocalLength = length(rayDirLocal);
-                rayDirLocal = normalize(rayDirLocal);
-                
-                float3 boundsMin = _BoundsMin[index];
-                float3 boundsMax = _BoundsMax[index];
-                float3 boundsSize = boundsMax - boundsMin;
-                
-                float3 localMin = -boundsSize * 0.5;
-                float3 localMax = boundsSize * 0.5;
-                
-                float3 invRayDirLocal = rcp(rayDirLocal);
-                float3 t0 = (localMin - rayStartLocal) * invRayDirLocal;
-                float3 t1 = (localMax - rayStartLocal) * invRayDirLocal;
-                float3 tmin = min(t0, t1);
-                float3 tmax = max(t0, t1);
-                
-                float tNear = max(max(tmin.x, tmin.y), tmin.z);
-                tNear = max(0, tNear);
-                float tFar = min(min(tmax.x, tmax.y), tmax.z);
-                
-                // Convert to world space distances
-                tNearWorld = tNear / rayDirLocalLength;
-                tFarWorld = tFar / rayDirLocalLength;
-                
-                return tNear < tFar && tFar > 0;
-            }
-            
             v2f vert(appData v)
             {
                 v2f o;
