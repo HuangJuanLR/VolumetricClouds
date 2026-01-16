@@ -121,6 +121,7 @@ namespace VolumetricClouds
 
         public int CurveVersion => m_CurveVersion;
 
+        #if UNITY_EDITOR
         [MenuItem("GameObject/Volume/Volumetric Clouds", false)]
         static void CreateVolumetricCloudsVolume()
         {
@@ -131,6 +132,7 @@ namespace VolumetricClouds
             Selection.activeGameObject = cloudsVolume;
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
         }
+        #endif
 
         private void Awake()
         {
@@ -232,7 +234,12 @@ namespace VolumetricClouds
         {
             if (m_Camera == null)
             {
-                m_Camera = Application.isPlaying? Camera.main : SceneView.lastActiveSceneView.camera;
+                #if UNITY_EDITOR
+                    m_Camera = Application.isPlaying? Camera.main : SceneView.lastActiveSceneView.camera;
+                #else
+                    m_Camera = Camera.main;
+                #endif
+                
                 if (m_Camera == null)
                 {
                     m_CameraDistance = 0.0f;
@@ -253,6 +260,7 @@ namespace VolumetricClouds
             }
         }
 
+        #if UNITY_EDITOR
         private void OnDrawGizmosSelected()
         {
             var ogMatrix = Gizmos.matrix;
@@ -279,9 +287,9 @@ namespace VolumetricClouds
             Handles.color = Color.white;
 
         }
+        #endif
     }
 }
-
 
 public class NameTag : PropertyAttribute
 {
@@ -293,6 +301,8 @@ public class NameTag : PropertyAttribute
     }
 }
 
+
+#if UNITY_EDITOR
 [CustomPropertyDrawer(typeof(NameTag))]
 public class NameTagDrawer : PropertyDrawer
 {
@@ -306,3 +316,4 @@ public class NameTagDrawer : PropertyDrawer
         EditorGUI.PropertyField(position, property, m_Content, true);
     }
 }
+#endif
