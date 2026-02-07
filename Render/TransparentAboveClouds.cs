@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
@@ -14,7 +15,12 @@ namespace VolumetricClouds
         
         private ScriptableCullingParameters m_CullingParams; 
 
-        private static ShaderTagId s_ShaderTagId = new ShaderTagId("UniversalForward");
+        private List<ShaderTagId> ShaderTagIds = new List<ShaderTagId>
+        {
+            new ShaderTagId("UniversalForward"),
+            new ShaderTagId("SRPDefaultUnlit"),
+            new ShaderTagId("UniversalForwardOnly")
+        };
 
         public TransparentAboveCloudsPass(VolumetricClouds.VolumetricCloudsSetting setting)
         {
@@ -42,7 +48,7 @@ namespace VolumetricClouds
             cmd.ClearRenderTarget(false, false, Color.black);
             
             var sortFlags = renderingData.cameraData.defaultOpaqueSortFlags;
-            var drawingSettings = CreateDrawingSettings(s_ShaderTagId, ref renderingData, sortFlags);
+            var drawingSettings = CreateDrawingSettings(ShaderTagIds, ref renderingData, sortFlags);
             
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
